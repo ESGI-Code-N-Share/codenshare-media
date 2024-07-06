@@ -1,0 +1,74 @@
+name: Deploy on prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      docker-tag:
+        description: 'Docker Tag you want to deploy'
+        required: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.docker-tag }}
+
+      # https://github.com/actions/setup-node
+      - name: Set Up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm i
+
+      - name: Configure .env stage configuration
+        run: echo "${{ secrets.ENV_CONFIG_PROD }}" > .env
+
+
+  build_image_and_deploy_image_on_docker_hub:
+    needs: run_migration
+    runs-on: ubuntu-latest
+
+    env:
+      REPOSITORY: ${{ secrets.DOCKER_HUB_REGISTRY }}/codenshare-media
+
+    steps:
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.docker-tag }}
+
+
+      - name: Configure .env stage configuration
+        run: echo "${{ secrets.ENV_CONFIG_PROD  }}" > .env
+
+      # https://github.com/docker/login-action
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_LOGIN }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      # https://github.com/docker/build-push-action
+      - name: Push Docker image with release version
+        uses: docker/build-push-action@v5
+        with:
+          file: ./Dockerfile
+          context: .
+          push: true
+          tags: ${{ env.REPOSITORY }}:latest
+
+#  deploy_on_prod:
+#    needs: build_image_and_deploy_image_on_docker_hub
+#    runs-on: ubuntu-latest
+#
+#    env:
+#      deploy_url: ${{ secrets.RENDER_DEPLOY_PROD_HOOK_URL }}
+#    steps:
+#      - name: deploy on render
+#        run: |
+#          curl "$deploy_url"

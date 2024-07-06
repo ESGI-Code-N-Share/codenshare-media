@@ -1,0 +1,72 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-description:
+        description: 'Release Description'
+        required: true
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    needs: build_and_test
+
+    outputs:
+      version: ${{ steps.extract_project_version.outputs.version }}
+
+    steps:
+      # https://github.com/actions/checkout
+      - name: Init Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Project Version
+        id: extract_project_version
+        run: |
+          sudo apt-get update && sudo apt-get install jq
+          version=$(jq -r '.version' package.json)
+          echo "$version"
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      # https://github.com/actions/create-release
+      - name: Create Release On Github
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.extract_project_version.outputs.version }}
+          release_name: Release ${{ steps.extract_project_version.outputs.version }}
+          body: |
+            ${{ inputs.release-description }}
+          draft: false
+          prerelease: false
+
+  build_image_and_deploy_on_docker_hub:
+    needs: create_release
+    runs-on: ubuntu-latest
+
+    env:
+      REPOSITORY: ${{ secrets.DOCKER_HUB_REGISTRY }}/codenshare-media
+      VERSION: ${{needs.create_release.outputs.version}}
+
+    steps:
+      # https://github.com/actions/checkout
+      - name: Init Checkout
+        uses: actions/checkout@v4
+
+      # https://github.com/docker/login-action
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_LOGIN }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+        # https://github.com/docker/build-push-action
+      - name: Push Docker image with release version
+        uses: docker/build-push-action@v5
+        with:
+          file: ./Dockerfile
+          context: .
+          push: true
+          tags: ${{ env.REPOSITORY }}:${{ env.VERSION }}
