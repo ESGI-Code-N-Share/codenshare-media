@@ -30,7 +30,6 @@ jobs:
 
 
   build_image_and_deploy_image_on_docker_hub:
-    needs: run_migration
     runs-on: ubuntu-latest
 
     env:
