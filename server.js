@@ -1,66 +1,54 @@
-var express = require('express');
-const path = require('path');
-const cors = require('cors');
-const bodyParser = require('body-parser');
+const express = require('express');
 const multer = require('multer');
+const cors = require('cors');
+const path = require('path');
 const fs = require('fs');
-const dotenv = require('dotenv')
+const dotenv = require('dotenv');
+
 dotenv.config();
+const app = express();
+const PORT = process.env.PORT || 4000;
 
-var app = express();
-var port = process.env.PORT || 4000;
+// Créez le dossier de stockage s'il n'existe pas
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir);
+}
 
-// enable CORS
-app.use(cors());
-app.use(cors({ origin: [process.env.CODENSHARE_WEBAPP_URL, process.env.CODENSHARE_MOBILE_URL, process.env.CODENSHARE_API_URL] }));
+// Configuration de multer pour le stockage des fichiers
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, file.originalname);
+    }
+});
 
-// parse application/json
-app.use(bodyParser.json({ limit: '10mb' }));
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
-
-// serving static files
 app.use('/uploads', express.static('uploads'));
 
-// handle storage using multer
-var storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads');
-    },
-    filename: function (req, file, cb) {
-        cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+const upload = multer({ storage: storage });
+
+// Middleware
+app.use(cors({
+    origin: [
+        process.env.CODENSHARE_WEBAPP_URL,
+        process.env.CODENSHARE_MOBILEAPP_URL,
+        process.env.CODENSHARE_API_URL
+    ]
+}));
+
+// Route pour l'upload
+app.post('/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No file was uploaded.');
     }
-});
-var upload = multer({
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10 Mo en octets
-    },
-    storage: storage
+
+    const url = `${process.env.CODENSHARE_MEDIA_URL}:${PORT}/uploads/${req.file.originalname}`;
+    res.send({ imageURL: url });
 });
 
-// request handlers
-app.get('/up', (req, res) => {
-    res.send('OK');
-});
-
-// handle single file upload
-app.post('/uploadfile', upload.single('dataFile'), (req, res, next) => {
-    const file = req.file;
-    if (!file) {
-        return res.status(400).send({ message: 'Please upload a file.' });
-    }
-    return res.send({ message: 'File uploaded successfully.', file, imageUrl: `http://${req.hostname}:${port}/uploads/${file.filename}` });
-});
-
-// handle multiple file upload
-app.post('/uploadmultifile', upload.array('dataFiles', 10), (req, res, next) => {
-    const files = req.files;
-    if (!files || (files && files.length === 0)) {
-        return res.status(400).send({ message: 'Please upload a file.' });
-    }
-    return res.send({ message: 'File uploaded successfully.', files });
-});
-
+// Route pour récupérer un fichier
 app.get('/:filename', (req, res) => {
     const filename = req.params.filename;
     const imagePath = path.join(__dirname, 'uploads', filename);
@@ -68,17 +56,15 @@ app.get('/:filename', (req, res) => {
     // Vérifier si le fichier existe
     fs.access(imagePath, fs.constants.F_OK, (err) => {
         if (err) {
-            return res.status(404).send({ message: 'Image not found.' });
+            return res.status(404).send('File not found.');
         }
 
-        // Renvoyer l'URL de l'image
-        const imageURL = `http://${req.hostname}:${port}/uploads/${filename}`;
+        const imageURL = `${process.env.HOST}:${PORT}/uploads/${filename}`;
         res.send({ imageURL });
     });
 });
 
-
-
-app.listen(port, () => {
-    console.log('Server started on: ' + port);
+// Démarrage du serveur
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
