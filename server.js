@@ -38,7 +38,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
         return res.status(400).send('No file was uploaded.');
     }
 
-    const url = `${process.env.HOST_API}:${PORT}/uploads/${req.file.originalname}`;
+    const url = `${process.env.HOST}/uploads/${req.file.originalname}`;
     res.send({imageURL: url});
 });
 
@@ -53,7 +53,7 @@ app.get('/:filename', (req, res) => {
             return res.status(404).send('File not found.');
         }
 
-        const imageURL = `${process.env.HOST_API}:${PORT}/uploads/${filename}`;
+        const imageURL = `${process.env.HOST}/uploads/${filename}`;
         res.send({imageURL});
     });
 });
