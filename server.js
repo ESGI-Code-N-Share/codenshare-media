@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 4000;
 
 // Créez le dossier de stockage s'il n'existe pas
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)){
+if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
 }
 
@@ -27,16 +27,10 @@ const storage = multer.diskStorage({
 
 app.use('/uploads', express.static('uploads'));
 
-const upload = multer({ storage: storage });
+const upload = multer({storage: storage});
 
 // Middleware
-app.use(cors({
-    origin: [
-        process.env.CODENSHARE_WEBAPP_URL,
-        process.env.CODENSHARE_MOBILEAPP_URL,
-        process.env.CODENSHARE_API_URL
-    ]
-}));
+app.use(cors({ origin: '*' }));
 
 // Route pour l'upload
 app.post('/upload', upload.single('file'), (req, res) => {
@@ -45,7 +39,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
     }
 
     const url = `${process.env.HOST_API}:${PORT}/uploads/${req.file.originalname}`;
-    res.send({ imageURL: url });
+    res.send({imageURL: url});
 });
 
 // Route pour récupérer un fichier
@@ -60,7 +54,7 @@ app.get('/:filename', (req, res) => {
         }
 
         const imageURL = `${process.env.HOST_API}:${PORT}/uploads/${filename}`;
-        res.send({ imageURL });
+        res.send({imageURL});
     });
 });
 
