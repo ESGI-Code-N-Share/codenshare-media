@@ -61,13 +61,13 @@ jobs:
           push: true
           tags: ${{ env.REPOSITORY }}:latest
 
-#  deploy_on_prod:
-#    needs: build_image_and_deploy_image_on_docker_hub
-#    runs-on: ubuntu-latest
-#
-#    env:
-#      deploy_url: ${{ secrets.RENDER_DEPLOY_PROD_HOOK_URL }}
-#    steps:
-#      - name: deploy on render
-#        run: |
-#          curl "$deploy_url"
+  deploy_on_prod:
+    needs: build_image_and_deploy_image_on_docker_hub
+    runs-on: ubuntu-latest
+
+    env:
+      deploy_url: ${{ secrets.RENDER_DEPLOY_PROD_HOOK_URL }}
+    steps:
+      - name: deploy on render
+        run: |
+          curl "$deploy_url"
