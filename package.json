@@ -1,6 +1,6 @@
 {
   "name": "codenshare-media",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Create REST API to upload file in Node.js using express and multer.",
   "main": "server.js",
   "scripts": {
